@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>O Arquivo de Valiran</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  /* ── RESET & BASE ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  :root {
+    --gold:        #c49a3c;
+    --gold-light:  #e8d5a3;
+    --gold-dim:    #8a6a2a;
+    --gold-muted:  #5a4020;
+    --ink:         #0a0806;
+    --ink-1:       #0d0b07;
+    --ink-2:       #111009;
+    --ink-3:       #181410;
+    --border:      #1e1810;
+    --border-2:    #2a2010;
+    --border-3:    #3a2e18;
+    --text:        #c9b99a;
+    --text-muted:  #7a6040;
+    --text-dim:    #4a3820;
+    --text-faint:  #2e2010;
+    --radius:      2px;
+  }
+
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 18px;
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--ink); }
+  ::-webkit-scrollbar-thumb { background: var(--border-3); border-radius: 2px; }
+
+  /* ── LAYOUT ── */
+  .page { position: relative; z-index: 1; }
+
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 2rem; }
+
+  /* ── ORNAMENTS ── */
+  .orn { color: var(--gold-muted); letter-spacing: 6px; font-size: 11px; }
+  .rule { height: 1px; background: linear-gradient(90deg, transparent, var(--border-3) 30%, var(--border-3) 70%, transparent); margin: 0; }
+  .rule-gold { height: 1px; background: linear-gradient(90deg, transparent, var(--gold-muted) 30%, var(--gold-muted) 70%, transparent); }
+
+  /* ── HEADER ── */
+  .site-header {
+    text-align: center;
+    padding: 4rem 2rem 2.5rem;
+    position: relative;
+  }
+  .site-header::after { content: ''; display: block; height: 1px; background: linear-gradient(90deg, transparent, var(--border-3) 30%, var(--border-3) 70%, transparent); margin-top: 2.5rem; }
+
+  .site-logo {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(1.6rem, 4vw, 3rem);
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 3px;
+    text-shadow: 0 2px 40px rgba(196,154,60,0.2);
+    line-height: 1.2;
+    margin: 1rem 0 0.5rem;
+  }
+  .site-tagline {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 1rem;
+    letter-spacing: 1px;
+  }
+
+  /* ── NAV ── */
+  .main-nav {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-top: 2rem;
+    border: 1px solid var(--border-2);
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    overflow: hidden;
+  }
+  .nav-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--ink-1);
+    border: none;
+    border-right: 1px solid var(--border-2);
+    padding: 0.65rem 1.4rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-btn:last-child { border-right: none; }
+  .nav-btn:hover { color: var(--gold-light); background: var(--ink-3); }
+  .nav-btn.active { color: var(--gold); background: var(--ink-3); }
+
+  /* ── CONFIG BANNER ── */
+  .config-banner {
+    background: #1a0f00;
+    border: 1px solid #5a3800;
+    border-left: 3px solid var(--gold);
+    padding: 1rem 1.5rem;
+    margin: 2rem 0;
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .config-banner input {
+    background: var(--ink-2);
+    border: 1px solid var(--border-3);
+    color: var(--text);
+    padding: 0.4rem 0.8rem;
+    font-family: 'Crimson Text', serif;
+    font-size: 0.95rem;
+    width: 340px;
+    max-width: 100%;
+    outline: none;
+  }
+  .config-banner input:focus { border-color: var(--gold-muted); }
+  .config-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: var(--gold-muted);
+    border: none;
+    color: var(--gold-light);
+    padding: 0.4rem 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .config-btn:hover { background: var(--gold-dim); }
+
+  /* ── STATS ── */
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    padding: 2rem 0;
+    flex-wrap: wrap;
+  }
+  .stat { text-align: center; }
+  .stat-n { font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold); line-height: 1; }
+  .stat-l { font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── SECTION TITLE ── */
+  .sec-title {
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold-muted);
+    margin: 3rem 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .sec-title::before, .sec-title::after { content: ''; flex: 1; height: 1px; background: var(--border-2); }
+
+  /* ── CATEGORY GRID ── */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .cat-card {
+    background: var(--ink-1);
+    padding: 1.5rem 1.25rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .cat-card:hover { background: var(--ink-3); }
+  .cat-card:hover .cat-name { color: var(--gold-light); }
+  .cat-glyph { font-size: 1.3rem; margin-bottom: 0.75rem; display: block; line-height: 1; }
+  .cat-name { font-family: 'Cinzel', serif; font-size: 0.85rem; color: var(--text-muted); letter-spacing: 1px; }
+  .cat-desc { font-size: 0.82rem; color: var(--text-faint); margin-top: 0.25rem; font-style: italic; }
+  .cat-count { font-family: 'Cinzel', serif; font-size: 0.7rem; color: var(--gold-muted); margin-top: 0.6rem; }
+
+  /* ── ARTICLE LIST ── */
+  .article-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .article-row {
+    background: var(--ink-1);
+    padding: 1.1rem 1.5rem;
+    cursor: pointer;
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    transition: background 0.15s;
+  }
+  .article-row:hover { background: var(--ink-3); }
+  .art-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+    border: 1px solid var(--border-3);
+    padding: 3px 9px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 3px;
+    text-transform: uppercase;
+  }
+  .art-title { font-family: 'Cinzel', serif; font-size: 0.95rem; color: var(--text); }
+  .art-excerpt { font-size: 0.88rem; color: var(--text-dim); font-style: italic; margin-top: 0.2rem; line-height: 1.5; }
+  .art-meta { font-size: 0.72rem; color: var(--text-faint); margin-top: 0.35rem; letter-spacing: 0.5px; }
+
+  /* ── ARTICLE VIEW ── */
+  .art-view { max-width: 700px; margin: 0 auto; padding: 2.5rem 0 4rem; }
+  .breadcrumb {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    cursor: pointer;
+    margin-bottom: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.15s;
+  }
+  .breadcrumb:hover { color: var(--text-muted); }
+  .art-h1 { font-family: 'Cinzel', serif; font-size: clamp(1.6rem, 3vw, 2.4rem); color: var(--gold-light); line-height: 1.2; margin-bottom: 0.5rem; }
+  .art-meta-header { display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .art-body { margin-top: 2rem; font-size: 1.05rem; line-height: 1.9; color: #b09878; }
+  .art-body p { margin-bottom: 1.2rem; }
+  .art-body h2 { font-family: 'Cinzel', serif; font-size: 1rem; color: var(--gold); margin: 2.5rem 0 0.8rem; letter-spacing: 2px; text-transform: uppercase; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-2); }
+  .art-body h3 { font-family: 'Cinzel', serif; font-size: 0.9rem; color: var(--text-muted); margin: 1.5rem 0 0.5rem; letter-spacing: 1px; }
+  .art-body ul, .art-body ol { padding-left: 1.5rem; margin-bottom: 1.2rem; }
+  .art-body li { margin-bottom: 0.4rem; }
+  .art-body strong { color: var(--gold-light); font-weight: 600; }
+  .art-body em { color: var(--text-muted); }
+  .art-body blockquote { border-left: 2px solid var(--gold-muted); padding-left: 1.25rem; margin: 1.5rem 0; font-style: italic; color: var(--text-muted); }
+
+  .tag { display: inline-block; font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 1.5px; color: var(--gold); border: 1px solid var(--border-3); padding: 2px 10px; text-transform: uppercase; }
+
+  /* ── CREATE FORM ── */
+  .create-panel { background: var(--ink-1); border: 1px solid var(--border-2); padding: 2rem; margin-top: 1rem; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border-2); margin-bottom: 2rem; gap: 0; }
+  .tab-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.65rem 1.5rem;
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text-muted); }
+  .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .form-group { margin-bottom: 1.5rem; }
+  .form-label { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 0.5rem; }
+  .form-input {
+    width: 100%; background: var(--ink); border: 1px solid var(--border-2);
+    color: var(--text); padding: 0.6rem 1rem;
+    font-family: 'Crimson Text', serif; font-size: 1rem;
+    outline: none; transition: border-color 0.2s;
+    border-radius: var(--radius);
+  }
+  .form-input:focus { border-color: var(--gold-muted); }
+  .form-select {
+    width: 100%; background: var(--ink); border: 1px solid var(--border-2);
+    color: var(--text); padding: 0.6rem 1rem;
+    font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 1px;
+    outline: none; cursor: pointer; border-radius: var(--radius);
+  }
+  .form-textarea {
+    width: 100%; background: var(--ink); border: 1px solid var(--border-2);
+    color: var(--text); padding: 0.75rem 1rem;
+    font-family: 'Crimson Text', serif; font-size: 1rem;
+    min-height: 280px; resize: vertical; outline: none;
+    transition: border-color 0.2s; line-height: 1.7;
+    border-radius: var(--radius);
+  }
+  .form-textarea:focus { border-color: var(--gold-muted); }
+
+  .btn-primary {
+    font-family: 'Cinzel', serif; font-size: 0.7rem;
+    letter-spacing: 2.5px; text-transform: uppercase;
+    background: var(--gold-muted); border: 1px solid var(--gold-dim);
+    color: var(--gold-light); padding: 0.75rem 2rem;
+    cursor: pointer; transition: background 0.2s;
+    border-radius: var(--radius);
+  }
+  .btn-primary:hover { background: var(--gold-dim); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-ghost {
+    font-family: 'Cinzel', serif; font-size: 0.7rem;
+    letter-spacing: 2px; text-transform: uppercase;
+    background: none; border: 1px solid var(--border-2);
+    color: var(--text-dim); padding: 0.65rem 1.5rem;
+    cursor: pointer; transition: all 0.15s;
+    border-radius: var(--radius);
+  }
+  .btn-ghost:hover { border-color: var(--border-3); color: var(--text-muted); }
+  .btn-danger {
+    font-family: 'Cinzel', serif; font-size: 0.68rem;
+    letter-spacing: 2px; text-transform: uppercase;
+    background: none; border: 1px solid #3a1010;
+    color: #6a2020; padding: 0.5rem 1.2rem;
+    cursor: pointer; transition: all 0.15s;
+    border-radius: var(--radius);
+  }
+  .btn-danger:hover { background: #1a0808; border-color: #6a2020; color: #c05050; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 1px dashed var(--border-3);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1.5rem;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--gold-muted); background: rgba(107,78,42,0.05); }
+  .upload-zone-icon { font-size: 2rem; color: var(--text-faint); margin-bottom: 0.75rem; display: block; }
+  .upload-zone-text { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+  .upload-zone-sub { font-size: 0.82rem; color: var(--text-faint); margin-top: 0.4rem; font-style: italic; }
+  .upload-preview {
+    background: var(--ink); border: 1px solid var(--border-2);
+    padding: 0.75rem 1rem; font-size: 0.85rem; color: var(--text-dim);
+    font-style: italic; max-height: 100px; overflow: auto;
+    margin-bottom: 1.5rem; line-height: 1.6;
+  }
+
+  /* ── AI LOADING ── */
+  .ai-loading { text-align: center; padding: 2.5rem 1rem; }
+  .spinner {
+    display: inline-block; width: 28px; height: 28px;
+    border: 2px solid var(--border-3); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ai-loading-text { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); }
+
+  /* ── SEARCH & FILTER ── */
+  .search-wrap { display: flex; gap: 0; margin-bottom: 1rem; }
+  .search-input {
+    flex: 1; background: var(--ink-1); border: 1px solid var(--border-2);
+    border-right: none; color: var(--text);
+    padding: 0.6rem 1rem; font-family: 'Crimson Text', serif;
+    font-size: 1rem; outline: none;
+  }
+  .search-input:focus { border-color: var(--border-3); }
+  .search-icon { background: var(--ink-1); border: 1px solid var(--border-2); color: var(--text-dim); padding: 0.6rem 1rem; font-size: 1rem; }
+
+  .filter-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .chip {
+    font-family: 'Cinzel', serif; font-size: 0.62rem;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    border: 1px solid var(--border-2); color: var(--text-dim);
+    background: none; padding: 4px 12px; cursor: pointer;
+    transition: all 0.15s; border-radius: var(--radius);
+  }
+  .chip:hover { border-color: var(--border-3); color: var(--text-muted); }
+  .chip.active { border-color: var(--gold-muted); color: var(--gold); background: rgba(107,78,42,0.1); }
+
+  /* ── EMPTY STATE ── */
+  .empty { text-align: center; padding: 4rem 2rem; color: var(--text-faint); }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; opacity: 0.5; }
+  .empty-text { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 3px; text-transform: uppercase; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--ink-3); border: 1px solid var(--gold-muted);
+    color: var(--gold-light); padding: 0.75rem 2rem;
+    font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 2px;
+    z-index: 999; animation: fadeUp 0.3s ease;
+    white-space: nowrap;
+  }
+  @keyframes fadeUp { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+
+  /* ── FOOTER ── */
+  .site-footer { text-align: center; padding: 3rem 0 2rem; margin-top: 4rem; border-top: 1px solid var(--border); }
+  .site-footer-text { font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 4px; text-transform: uppercase; color: var(--text-faint); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .container { padding: 0 1rem; }
+    .main-nav { flex-wrap: wrap; width: 100%; }
+    .nav-btn { flex: 1; text-align: center; border-right: none; border-bottom: 1px solid var(--border-2); }
+  }
+</style>
+</head>
+<body>
+<div class="page" id="root"></div>
+
+<script>
+// ── SUPABASE CONFIG ──────────────────────────────────────────
+// Substitua os valores abaixo pelas suas credenciais do Supabase
+// Encontre em: supabase.com → seu projeto → Settings → API
+const SUPABASE_URL  = localStorage.getItem('valiran_url')  || '';
+const SUPABASE_KEY  = localStorage.getItem('valiran_key')  || '';
+
+const CATEGORIES = [
+  { id: 'personagens', name: 'Personagens',        icon: '⚔',  desc: 'Heróis, vilões e figuras lendárias' },
+  { id: 'locais',      name: 'Locais',              icon: '🗺', desc: 'Reinos, cidades e lugares míticos'  },
+  { id: 'faccoes',     name: 'Facções',             icon: '🛡', desc: 'Ordens, guildas e organizações'     },
+  { id: 'deuses',      name: 'Deuses / Panteão',    icon: '✦',  desc: 'Divindades e entidades superiores'  },
+  { id: 'eventos',     name: 'Eventos / História',  icon: '📜', desc: 'Guerras, profecias, marcos históricos' },
+  { id: 'sessoes',     name: 'Sessões / Crônicas',  icon: '🕯', desc: 'Registros das aventuras'            },
+  { id: 'magia',       name: 'Magia / Artefatos',   icon: '🔮', desc: 'Feitiços, runas e relíquias'        },
+  { id: 'criaturas',   name: 'Criaturas',           icon: '🐉', desc: 'Besta, monstros e seres fantásticos'},
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let state = {
+  view: 'home',
+  articles: [],
+  loading: true,
+  selectedArticle: null,
+  selectedCat: null,
+  filterCat: 'all',
+  search: '',
+  createTab: 'upload',
+  newTitle: '',
+  newCat: 'personagens',
+  newContent: '',
+  newTags: '',
+  uploadedText: '',
+  uploadedFileName: '',
+  isGenerating: false,
+  isDrag: false,
+  toast: null,
+  supaUrl: localStorage.getItem('valiran_url') || '',
+  supaKey: localStorage.getItem('valiran_key') || '',
+  supaReady: !!(localStorage.getItem('valiran_url') && localStorage.getItem('valiran_key')),
+};
+
+let supabase = null;
+if (state.supaReady) {
+  supabase = window.supabase.createClient(state.supaUrl, state.supaKey);
+}
+
+// ── SUPABASE OPS ─────────────────────────────────────────────
+async function fetchArticles() {
+  if (!supabase) { state.loading = false; render(); return; }
+  const { data, error } = await supabase
+    .from('articles')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (!error && data) state.articles = data;
+  state.loading = false;
+  render();
+}
+
+async function saveArticle() {
+  if (!state.newTitle || !state.newContent) return;
+  const article = {
+    title:    state.newTitle,
+    category: state.newCat,
+    excerpt:  state.newContent.replace(/^##.*$/gm,'').replace(/\n+/g,' ').trim().substring(0,160) + '...',
+    content:  state.newContent,
+    tags:     state.newTags.split(',').map(t=>t.trim()).filter(Boolean),
+    author:   'Guardião',
+  };
+
+  if (supabase) {
+    const { data, error } = await supabase.from('articles').insert([article]).select();
+    if (!error && data) state.articles = [data[0], ...state.articles];
+  } else {
+    // fallback sem Supabase (apenas memória)
+    state.articles = [{ id: Date.now(), ...article, created_at: new Date().toISOString() }, ...state.articles];
+  }
+
+  showToast(`"${state.newTitle}" registrado no Arquivo.`);
+  state.newTitle = ''; state.newContent = ''; state.newTags = '';
+  state.uploadedText = ''; state.uploadedFileName = '';
+  state.view = 'articles';
+  render();
+}
+
+async function deleteArticle(id) {
+  if (!confirm('Apagar este registro permanentemente?')) return;
+  if (supabase) await supabase.from('articles').delete().eq('id', id);
+  state.articles = state.articles.filter(a => a.id !== id);
+  state.view = 'articles';
+  showToast('Registro removido do Arquivo.');
+  render();
+}
+
+// ── AI ───────────────────────────────────────────────────────
+async function generateWithAI() {
+  if (!state.uploadedText && !state.newTitle) return;
+  state.isGenerating = true; render();
+
+  const catName = CATEGORIES.find(c=>c.id===state.newCat)?.name || state.newCat;
+  const prompt = state.uploadedText
+    ? `Você é o Guardião de um Arquivo de campanha de RPG chamado "O Arquivo de Valiran", de fantasia sombria medieval.
+
+Com base no texto abaixo, crie um artigo de wiki rico, detalhado e épico para a campanha. Escreva em português (Brasil). Use seções com ## para subtítulos relevantes. Escreva como se fosse um registro histórico antigo, com linguagem literária e atmosférica. Crie profundidade, mistério e coerência de lore.
+
+Texto base:
+${state.uploadedText.substring(0, 3500)}
+
+Retorne APENAS o conteúdo do artigo em markdown, sem título, sem preamble.`
+    : `Você é o Guardião de um Arquivo de campanha de RPG chamado "O Arquivo de Valiran", de fantasia sombria medieval.
+
+Crie um artigo de wiki rico e épico para um elemento chamado "${state.newTitle}" da categoria "${catName}". Escreva em português (Brasil). Use ## para subtítulos. Escreva como um registro histórico antigo com linguagem literária e atmosférica. Inclua: origem, descrição física/geográfica, história, papel no mundo, mistérios e segredos. Seja criativo e detalhado.
+
+Retorne APENAS o conteúdo em markdown, sem título, sem preamble.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const data = await res.json();
+    state.newContent = data.content?.map(b=>b.text||'').join('') || 'Erro ao invocar o Arquivo.';
+  } catch(e) {
+    state.newContent = 'Erro ao contatar os planos superiores. Verifique sua conexão.';
+  }
+  state.isGenerating = false; render();
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function catOf(id) { return CATEGORIES.find(c=>c.id===id); }
+
+function showToast(msg) {
+  state.toast = msg; render();
+  setTimeout(() => { state.toast = null; render(); }, 3500);
+}
+
+function handleFileRead(file) {
+  if (!file) return;
+  state.uploadedFileName = file.name;
+  if (!state.newTitle) state.newTitle = file.name.replace(/\.[^/.]+$/,'');
+  const reader = new FileReader();
+  reader.onload = e => { state.uploadedText = e.target.result; render(); };
+  reader.readAsText(file);
+}
+
+function saveSupaConfig() {
+  localStorage.setItem('valiran_url', state.supaUrl);
+  localStorage.setItem('valiran_key', state.supaKey);
+  supabase = window.supabase.createClient(state.supaUrl, state.supaKey);
+  state.supaReady = true;
+  state.loading = true;
+  render();
+  fetchArticles();
+}
+
+function markdownToHtml(md) {
+  return md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .split('\n')
+    .map(l => l.match(/^<(h[23]|ul|blockquote|li)/) ? l : l.trim() ? `<p>${l}</p>` : '')
+    .join('');
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function render() {
+  const S = state;
+  const filtered = S.articles.filter(a => {
+    const mc = S.filterCat === 'all' || a.category === S.filterCat;
+    const ms = !S.search || a.title.toLowerCase().includes(S.search.toLowerCase()) || (a.excerpt||'').toLowerCase().includes(S.search.toLowerCase());
+    return mc && ms;
+  });
+  const catArticles = S.selectedCat ? S.articles.filter(a=>a.category===S.selectedCat) : [];
+
+  const configBanner = !S.supaReady ? `
+    <div class="config-banner">
+      <span>⚙ Configure o Supabase para salvar os dados na nuvem:</span>
+      <input id="inp-url" placeholder="Project URL (https://xxx.supabase.co)" value="${S.supaUrl}" style="width:280px" />
+      <input id="inp-key" placeholder="anon public key" value="${S.supaKey}" style="width:260px" />
+      <button class="config-btn" onclick="state.supaUrl=document.getElementById('inp-url').value;state.supaKey=document.getElementById('inp-key').value;saveSupaConfig()">Conectar</button>
+    </div>` : '';
+
+  let main = '';
+
+  // ── HOME ──
+  if (S.view === 'home') {
+    main = `
+      <div class="stats-row">
+        <div class="stat"><div class="stat-n">${S.articles.length}</div><div class="stat-l">Registros</div></div>
+        <div class="stat"><div class="stat-n">${CATEGORIES.length}</div><div class="stat-l">Câmaras</div></div>
+        <div class="stat"><div class="stat-n">${S.articles.reduce((a,b)=>a+(b.content||'').split(' ').length,0).toLocaleString('pt-BR')}</div><div class="stat-l">Fragmentos</div></div>
+      </div>
+      <div class="rule"></div>
+      <div class="sec-title">Câmaras do Arquivo</div>
+      <div class="cat-grid">
+        ${CATEGORIES.map(c=>`
+          <div class="cat-card" onclick="state.selectedCat='${c.id}';state.view='cat-detail';render()">
+            <span class="cat-glyph">${c.icon}</span>
+            <div class="cat-name">${c.name}</div>
+            <div class="cat-desc">${c.desc}</div>
+            <div class="cat-count">${S.articles.filter(a=>a.category===c.id).length} registro(s)</div>
+          </div>`).join('')}
+      </div>
+      ${S.articles.length > 0 ? `
+      <div class="sec-title">Registros Recentes</div>
+      <div class="article-list">
+        ${S.articles.slice(0,6).map(a=>`
+          <div class="article-row" onclick="state.selectedArticle=${JSON.stringify(a).replace(/"/g,'&quot;')};state.view='article';render()">
+            <span class="art-badge">${catOf(a.category)?.name||a.category}</span>
+            <div>
+              <div class="art-title">${a.title}</div>
+              <div class="art-excerpt">${a.excerpt||''}</div>
+              <div class="art-meta">Guardião · ${formatDate(a.created_at)}</div>
+            </div>
+          </div>`).join('')}
+      </div>` : `<div class="empty"><span class="empty-icon">📜</span><div class="empty-text">O Arquivo aguarda seus primeiros registros</div><br><button class="btn-primary" onclick="state.view='create';render()" style="margin-top:1rem">+ Adicionar Registro</button></div>`}`;
+  }
+
+  // ── CATEGORIES ──
+  if (S.view === 'categories') {
+    main = `
+      <div class="sec-title">Câmaras do Arquivo</div>
+      <div class="cat-grid">
+        ${CATEGORIES.map(c=>`
+          <div class="cat-card" onclick="state.selectedCat='${c.id}';state.view='cat-detail';render()">
+            <span class="cat-glyph">${c.icon}</span>
+            <div class="cat-name">${c.name}</div>
+            <div class="cat-desc">${c.desc}</div>
+            <div class="cat-count">${S.articles.filter(a=>a.category===c.id).length} registro(s)</div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  // ── CAT DETAIL ──
+  if (S.view === 'cat-detail' && S.selectedCat) {
+    const cat = catOf(S.selectedCat);
+    main = `
+      <div class="sec-title">${cat?.icon} ${cat?.name}</div>
+      <button class="btn-ghost" style="margin-bottom:1.5rem" onclick="state.view='categories';render()">← Voltar</button>
+      ${catArticles.length === 0 ? `
+        <div class="empty"><span class="empty-icon">🕯</span><div class="empty-text">Esta câmara não guarda registros ainda</div><br><button class="btn-primary" style="margin-top:1rem" onclick="state.newCat='${S.selectedCat}';state.view='create';render()">+ Adicionar</button></div>` : `
+        <div class="article-list">
+          ${catArticles.map(a=>`
+            <div class="article-row" onclick='state.selectedArticle=${JSON.stringify(a).replace(/'/g,"&#39;").replace(/"/g,'&quot;')};state.view="article";render()'>
+              <span class="art-badge">${cat?.name}</span>
+              <div>
+                <div class="art-title">${a.title}</div>
+                <div class="art-excerpt">${a.excerpt||''}</div>
+                <div class="art-meta">${formatDate(a.created_at)}</div>
+              </div>
+            </div>`).join('')}
+        </div>`}`;
+  }
+
+  // ── ARTICLES ──
+  if (S.view === 'articles') {
+    main = `
+      <div class="sec-title">Todos os Registros</div>
+      <div class="search-wrap">
+        <input class="search-input" placeholder="Buscar nos registros..." value="${S.search}" oninput="state.search=this.value;render()" />
+        <span class="search-icon">⌕</span>
+      </div>
+      <div class="filter-row">
+        <button class="chip ${S.filterCat==='all'?'active':''}" onclick="state.filterCat='all';render()">Todos</button>
+        ${CATEGORIES.map(c=>`<button class="chip ${S.filterCat===c.id?'active':''}" onclick="state.filterCat='${c.id}';render()">${c.name}</button>`).join('')}
+      </div>
+      ${filtered.length === 0 ? `<div class="empty"><span class="empty-icon">🕯</span><div class="empty-text">Nenhum registro encontrado</div></div>` : `
+      <div class="article-list">
+        ${filtered.map(a=>`
+          <div class="article-row" onclick='state.selectedArticle=${JSON.stringify(a).replace(/'/g,"&#39;").replace(/"/g,'&quot;')};state.view="article";render()'>
+            <span class="art-badge">${catOf(a.category)?.name||a.category}</span>
+            <div>
+              <div class="art-title">${a.title}</div>
+              <div class="art-excerpt">${a.excerpt||''}</div>
+              <div class="art-meta">Guardião · ${formatDate(a.created_at)}</div>
+            </div>
+          </div>`).join('')}
+      </div>`}`;
+  }
+
+  // ── ARTICLE VIEW ──
+  if (S.view === 'article' && S.selectedArticle) {
+    const a = S.selectedArticle;
+    const cat = catOf(a.category);
+    main = `
+      <div class="art-view">
+        <div class="breadcrumb" onclick="state.view='articles';render()">← Registros</div>
+        <div class="rule-gold" style="margin-bottom:1.5rem"></div>
+        <span class="tag">${cat?.icon} ${cat?.name}</span>
+        <h1 class="art-h1" style="margin-top:0.75rem">${a.title}</h1>
+        <div class="art-meta-header">
+          <span style="font-size:0.8rem;color:var(--text-faint);letter-spacing:1px">Guardião · ${formatDate(a.created_at)}</span>
+          ${a.tags?.map?.(t=>`<span class="tag">${t}</span>`).join('')||''}
+        </div>
+        <div class="rule" style="margin:1.5rem 0"></div>
+        <div class="art-body">${markdownToHtml(a.content||'')}</div>
+        <div class="rule" style="margin:2.5rem 0"></div>
+        <button class="btn-danger" onclick="deleteArticle(${a.id})">✕ Apagar Registro</button>
+      </div>`;
+  }
+
+  // ── CREATE ──
+  if (S.view === 'create') {
+    main = `
+      <div class="sec-title">Novo Registro</div>
+      <div class="create-panel">
+        <div class="tabs">
+          <button class="tab-btn ${S.createTab==='upload'?'active':''}" onclick="state.createTab='upload';render()">Upload de Arquivo</button>
+          <button class="tab-btn ${S.createTab==='manual'?'active':''}" onclick="state.createTab='manual';render()">Escrita Manual</button>
+        </div>
+
+        ${S.createTab === 'upload' ? `
+          <input type="file" id="file-inp" accept=".txt,.md,.rtf" style="display:none" onchange="handleFileRead(this.files[0])" />
+          <div class="upload-zone ${S.isDrag?'drag':''}"
+            ondragover="event.preventDefault();state.isDrag=true;render()"
+            ondragleave="state.isDrag=false;render()"
+            ondrop="event.preventDefault();state.isDrag=false;handleFileRead(event.dataTransfer.files[0]);render()"
+            onclick="document.getElementById('file-inp').click()">
+            <span class="upload-zone-icon">📜</span>
+            <div class="upload-zone-text">${S.uploadedFileName || 'Arraste um arquivo ou clique aqui'}</div>
+            <div class="upload-zone-sub">.txt · .md — anotações de sessão, backstory, notas de lore</div>
+          </div>
+          ${S.uploadedText ? `<div class="upload-preview">${S.uploadedText.substring(0,400)}${S.uploadedText.length>400?'…':''}</div>` : ''}
+        ` : ''}
+
+        <div class="form-group">
+          <label class="form-label">Título do Registro</label>
+          <input class="form-input" placeholder="Nome do personagem, local, evento..." value="${S.newTitle}" oninput="state.newTitle=this.value" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Câmara</label>
+          <select class="form-select" onchange="state.newCat=this.value">
+            ${CATEGORIES.map(c=>`<option value="${c.id}" ${S.newCat===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
+          </select>
+        </div>
+
+        ${!S.isGenerating ? `
+          <div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+            <button class="btn-primary" onclick="generateWithAI()" ${(!S.uploadedText&&!S.newTitle)?'disabled':''}>✦ Gerar com IA</button>
+            <span style="font-size:0.85rem;color:var(--text-faint);font-style:italic">A IA cria o artigo a partir do seu texto ou título</span>
+          </div>` : `
+          <div class="ai-loading">
+            <div class="spinner"></div>
+            <div class="ai-loading-text">O Arquivo está processando os fragmentos…</div>
+          </div>`}
+
+        <div class="form-group">
+          <label class="form-label">Conteúdo (Markdown)</label>
+          <textarea class="form-textarea" placeholder="## Origem&#10;&#10;Escreva aqui o conteúdo...&#10;&#10;## História&#10;&#10;Use ## para criar seções." oninput="state.newContent=this.value">${S.newContent}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tags (separadas por vírgula)</label>
+          <input class="form-input" placeholder="ex: nobre, guerreiro, misterioso" value="${S.newTags}" oninput="state.newTags=this.value" />
+        </div>
+
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+          <button class="btn-primary" onclick="saveArticle()" ${(!S.newTitle||!S.newContent)?'disabled':''}>✦ Guardar no Arquivo</button>
+          <button class="btn-ghost" onclick="state.view='home';render()">Cancelar</button>
+        </div>
+      </div>`;
+  }
+
+  // ── FULL HTML ──
+  document.getElementById('root').innerHTML = `
+    <header class="site-header">
+      <div class="orn">✦ ✦ ✦</div>
+      <div class="site-logo">O Arquivo de Valiran</div>
+      <div class="site-tagline">"Aqui jazem os segredos que o tempo tentou sepultar."</div>
+      <nav class="main-nav">
+        <button class="nav-btn ${S.view==='home'?'active':''}" onclick="state.view='home';render()">Início</button>
+        <button class="nav-btn ${S.view==='categories'||S.view==='cat-detail'?'active':''}" onclick="state.view='categories';render()">Câmaras</button>
+        <button class="nav-btn ${S.view==='articles'?'active':''}" onclick="state.view='articles';render()">Registros</button>
+        <button class="nav-btn ${S.view==='create'?'active':''}" onclick="state.view='create';render()">+ Novo Registro</button>
+      </nav>
+    </header>
+
+    <main class="container">
+      ${configBanner}
+      ${S.loading ? '<div class="empty" style="padding:6rem 0"><div class="spinner" style="margin:0 auto"></div></div>' : main}
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer-text">✦ O Arquivo de Valiran — Registros do Esquecido ✦</div>
+    </footer>
+
+    ${S.toast ? `<div class="toast">✦ ${S.toast}</div>` : ''}
+  `;
+}
+
+// ── BOOT ────────────────────────────────────────────────────
+render();
+if (state.supaReady) fetchArticles();
+else { state.loading = false; render(); }
+</script>
+</body>
+</html>
